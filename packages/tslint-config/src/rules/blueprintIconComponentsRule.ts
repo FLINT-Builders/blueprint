@@ -20,6 +20,8 @@ import * as ts from "typescript";
 const OPTION_COMPONENT = "component";
 const OPTION_LITERAL = "literal";
 
+const ICON_NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/i;
+
 export class Rule extends Lint.Rules.AbstractRule {
     public static metadata: Lint.IRuleMetadata = {
         ruleName: "blueprint-icon-components",
@@ -62,8 +64,13 @@ function walk(ctx: Lint.WalkContext<string>): void {
                     // no-op
                 } else if (ts.isStringLiteral(initializer) && option === OPTION_COMPONENT) {
                     // "tick" -> <TickIcon />
-                    const iconName = `<${pascalCase(initializer.text)}Icon />`;
-                    addFailure(ctx, node, Rule.componentMessage(iconName), `{${iconName}}`);
+                    // the icon name becomes part of a JSX tag, so anything other than a plain kebab-case name could become code
+                    if (ICON_NAME_PATTERN.test(initializer.text)) {
+                        const iconName = `<${pascalCase(initializer.text)}Icon />`;
+                        addFailure(ctx, node, Rule.componentMessage(iconName), `{${iconName}}`);
+                    } else {
+                        addFailure(ctx, node, Rule.componentMessage("<...Icon />"));
+                    }
                 } else if (ts.isJsxExpression(initializer) && option === OPTION_LITERAL) {
                     // <TickIcon /> -> "tick"
                     const match = /<(\w+)Icon /.exec(initializer.getText());
