@@ -20,6 +20,9 @@ import * as ts from "typescript";
 const OPTION_COMPONENT = "component";
 const OPTION_LITERAL = "literal";
 
+/** Matches kebab-case icon names such as "tick" or "chevron-right". */
+const ICON_NAME_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
 export class Rule extends Lint.Rules.AbstractRule {
     public static metadata: Lint.IRuleMetadata = {
         ruleName: "blueprint-icon-components",
@@ -60,7 +63,12 @@ function walk(ctx: Lint.WalkContext<string>): void {
                 const option = ctx.options;
                 if (initializer === undefined) {
                     // no-op
-                } else if (ts.isStringLiteral(initializer) && option === OPTION_COMPONENT) {
+                } else if (
+                    ts.isStringLiteral(initializer) &&
+                    option === OPTION_COMPONENT &&
+                    // The fix writes this name into source as JSX, so anything that is not a well-formed icon name is skipped.
+                    ICON_NAME_PATTERN.test(initializer.text)
+                ) {
                     // "tick" -> <TickIcon />
                     const iconName = `<${pascalCase(initializer.text)}Icon />`;
                     addFailure(ctx, node, Rule.componentMessage(iconName), `{${iconName}}`);

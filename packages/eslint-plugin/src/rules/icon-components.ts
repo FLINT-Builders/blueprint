@@ -21,6 +21,9 @@ import { createRule } from "./utils/createRule";
 export const OPTION_COMPONENT = "component";
 export const OPTION_LITERAL = "literal";
 
+/** Matches kebab-case icon names such as "tick" or "chevron-right". */
+const ICON_NAME_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
 type Options = ["component" | "literal"];
 type MessageIds = "component" | "literal";
 
@@ -64,10 +67,13 @@ function create(context: TSESLint.RuleContext<MessageIds, Options>, node: TSESTr
     const valueNode = node.value;
     if (valueNode == null) {
         // no-op
-    } else if (valueNode.type === AST_NODE_TYPES.Literal && valueNode.value != null && option === OPTION_COMPONENT) {
+    } else if (valueNode.type === AST_NODE_TYPES.Literal && option === OPTION_COMPONENT) {
         // "tick" -> <TickIcon />
-        const quotedIconName = sourceCode.getText(valueNode);
-        const iconTag = `<${pascalCase(quotedIconName.slice(1, quotedIconName.length - 1))}Icon />`;
+        // The fix writes this name into source as JSX, so anything that is not a well-formed icon name is skipped.
+        if (typeof valueNode.value !== "string" || !ICON_NAME_PATTERN.test(valueNode.value)) {
+            return;
+        }
+        const iconTag = `<${pascalCase(valueNode.value)}Icon />`;
 
         context.report({
             data: {
