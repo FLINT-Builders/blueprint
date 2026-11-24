@@ -24,7 +24,7 @@ export interface Panel<P> {
     renderPanel: React.FC<PanelProps<P>>;
 
     /**
-     * HTML title to be passed to the <Text> component
+     * HTML title to be passed to the `<Text>` component
      */
     htmlTitle?: string;
 

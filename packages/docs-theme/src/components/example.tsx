@@ -19,6 +19,8 @@ import { PureComponent } from "react";
 
 import type { Props } from "@blueprintjs/core";
 
+import { sanitizeHtml } from "../common/sanitizeHtml";
+
 export interface ExampleProps<T = object> extends Props {
     /**
      * Identifier of this example.
@@ -67,8 +69,9 @@ export interface DocsExampleProps extends ExampleProps {
     showOptionsBelowExample?: boolean;
 
     /**
-     * HTML markup for the example, which will be directly injected into the
-     * example container using `dangerouslySetInnerHTML`.
+     * HTML markup for the example, which will be sanitized (removing scripts,
+     * event handlers, and unsafe URLs) and injected into the example container
+     * using `dangerouslySetInnerHTML`.
      *
      * This prop is mutually exclusive with and takes priority over `children`.
      */
@@ -146,7 +149,7 @@ export class Example extends PureComponent<DocsExampleProps> {
             html == null ? (
                 <div className="docs-example">{children}</div>
             ) : (
-                <div className="docs-example" dangerouslySetInnerHTML={{ __html: html }} />
+                <div className="docs-example" dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />
             );
 
         return (

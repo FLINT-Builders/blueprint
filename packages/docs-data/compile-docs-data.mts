@@ -13,7 +13,7 @@ import semver from "semver";
 
 import { Classes } from "@blueprintjs/core";
 
-import { hooks, markedRenderer } from "./markdownRenderer.mjs";
+import { hooks, markedRenderer, sanitizeHtml } from "./markdownRenderer.mjs";
 import { assignRoutes, buildNavTree, normalizeNavConfig } from "./navHelpers.mts";
 import {
     PACKAGES,
@@ -39,6 +39,9 @@ const TYPESCRIPT_LIBRARY_PACKAGES = LIBRARY_PACKAGES.filter(pkg => pkg !== "icon
 const monorepoRootDir = resolve(cwd(), "../../");
 const generatedSrcDir = resolve(cwd(), "./src/generated");
 const docsDataFilePath = join(generatedSrcDir, "docs.json");
+
+const KSS_ATTR_MODIFIER = "{{:modifier}}";
+const KSS_ATTR_MODIFIER_PLACEHOLDER = "data-docs-kss-attr-modifier";
 
 if (import.meta.main) {
     const target = process.argv[2] ?? "all";
@@ -125,11 +128,28 @@ export function transformDocumentalistData(key: string, value: any): any {
         return sortMajorVersions(value);
     }
 
+    // Unrendered comment and markdown source; the docs site only displays the rendered `contents`.
+    if (key === "contentsRaw") {
+        return undefined;
+    }
+
     if (typeof value === "string") {
-        return interpolateClassNamespace(value);
+        const interpolated = interpolateClassNamespace(value);
+        // KSS `markup` is raw HTML for live examples and does not pass through the markdown renderer.
+        return key === "markup" ? sanitizeKssMarkup(interpolated) : interpolated;
     }
 
     return value;
+}
+
+/**
+ * Sanitizes KSS example markup while preserving the `{{:modifier}}` attribute placeholder,
+ * which the docs theme replaces with the selected modifiers before rendering.
+ */
+export function sanitizeKssMarkup(markup: string): string {
+    return sanitizeHtml(markup.split(KSS_ATTR_MODIFIER).join(KSS_ATTR_MODIFIER_PLACEHOLDER))
+        .split(`${KSS_ATTR_MODIFIER_PLACEHOLDER}=""`)
+        .join(KSS_ATTR_MODIFIER);
 }
 
 /**

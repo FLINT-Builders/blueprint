@@ -48,7 +48,7 @@ export interface TagProps
     children?: React.ReactNode;
 
     /**
-     * HTML title to be passed to the <Text> component
+     * HTML title to be passed to the `<Text>` component
      */
     htmlTitle?: string;
 

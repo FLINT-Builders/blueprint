@@ -5,10 +5,16 @@
 // @ts-check
 
 import escapeHTML from "escape-html";
+import { JSDOM } from "jsdom";
 import { marked } from "marked";
 
 import { Classes } from "@blueprintjs/core";
-import { Classes as DocsClasses } from "@blueprintjs/docs-theme";
+import { Classes as DocsClasses, createHtmlSanitizer } from "@blueprintjs/docs-theme";
+
+/**
+ * Strips scripts, event handlers, and unsafe URLs from HTML written into the docs data.
+ */
+const sanitizeHtml = createHtmlSanitizer(/** @type {any} */ (new JSDOM("").window));
 
 /**
  * Markdown renderer with some custom logic to handle `<code>` tags.
@@ -42,7 +48,7 @@ renderer.code = (textContent, infostring, isEscaped) => {
             break;
     }
 
-    const pre = `<pre class="${Classes.CODE_BLOCK} ${DocsClasses.DOCS_CODE_BLOCK}" data-lang="${language}">${textContent}</pre>`;
+    const pre = `<pre class="${Classes.CODE_BLOCK} ${DocsClasses.DOCS_CODE_BLOCK}" data-lang="${escapeHTML(language)}">${textContent}</pre>`;
 
     // Wrap code blocks in a container so the docs app can mount a copy button.
     // Triggered by either an explicit `copy` tag in the info string, or code starting with "import ".
@@ -57,7 +63,7 @@ renderer.code = (textContent, infostring, isEscaped) => {
  * Render the given markdown text as html.
  */
 function renderMarkdown(textContent) {
-    return marked(textContent, { renderer });
+    return sanitizeHtml(/** @type {string} */ (marked(textContent, { renderer })));
 }
 
 const hooks = {
@@ -76,10 +82,12 @@ const hooks = {
     },
 
     /**
+     * Every markdown string Documentalist renders (pages, API comments, KSS documentation) passes through here.
+     *
      * @param html {string}
      * @returns {string}
      */
-    postprocess: html => html,
+    postprocess: html => sanitizeHtml(html),
 };
 
-export { hooks, renderMarkdown, renderer as markedRenderer };
+export { hooks, renderMarkdown, renderer as markedRenderer, sanitizeHtml };
