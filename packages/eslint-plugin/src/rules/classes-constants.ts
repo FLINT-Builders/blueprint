@@ -60,22 +60,31 @@ function create(
     ) {
         return;
     }
-    const nodeValue = node.type === AST_NODE_TYPES.Literal ? node.raw : node.value.raw;
+    const nodeValue =
+        node.type === AST_NODE_TYPES.TemplateElement
+            ? node.value.raw
+            : typeof node.value === "string"
+              ? node.value
+              : node.raw;
     const prefixMatches = getAllMatches(nodeValue);
     if (prefixMatches.length > 0) {
-        const ptClassStrings = prefixMatches.map(m => m.match);
-        const replacementText =
-            node.type === AST_NODE_TYPES.Literal
-                ? // "string literal" likely becomes `${template} string` so we may need to change how it is assigned
-                  wrapForParent(getLiteralReplacement(nodeValue, prefixMatches), node)
-                : getTemplateReplacement(nodeValue, ptClassStrings);
+        let replacement: { node: TSESTree.Node; text: string } | undefined;
+        if (node.type === AST_NODE_TYPES.TemplateElement) {
+            replacement = getTemplateReplacement(context.sourceCode.getText(node), node, prefixMatches);
+        } else if (typeof node.value === "string") {
+            // "string literal" likely becomes `${template} string` so we may need to change how it is assigned
+            replacement = { node, text: wrapForParent(getLiteralReplacement(node.value, prefixMatches), node) };
+        }
         context.report({
             messageId: "useBlueprintClasses",
             node,
             fix: fixer => {
+                if (replacement === undefined) {
+                    return null;
+                }
                 const fixes = new FixList();
 
-                fixes.addFixes(fixer.replaceText(node, replacementText));
+                fixes.addFixes(fixer.replaceText(replacement.node, replacement.text));
 
                 // Add import for the Classes enum
                 const program = getProgram(node);
@@ -99,16 +108,16 @@ function getAllMatches(className: string) {
     return ptMatches;
 }
 
-/** Produce replacement text for a string literal that contains invalid classes. */
-function getLiteralReplacement(className: string, prefixMatches: Array<{ match: string; index: number }>) {
-    // Special case: the string consists entirely of the invalid class name (ignoring quotes/spaces)
+/**
+ * Produce replacement text for a string literal that contains invalid classes.
+ * `value` is the literal's evaluated string, not its source text, so every segment copied into the
+ * template must go through `escapeTemplateText` to keep it inert.
+ */
+function getLiteralReplacement(value: string, prefixMatches: Array<{ match: string; index: number }>) {
+    // Special case: the string consists entirely of the invalid class name (ignoring spaces)
     // In this scenario, we just want to return the converted classnames without surrounding with ${} for interpolation
     if (prefixMatches.length === 1) {
-        const remainingString = className
-            .replace(prefixMatches[0].match, "")
-            .slice(1, -1)
-            .replace(/(\s)+/, "$1")
-            .trim();
+        const remainingString = value.replace(prefixMatches[0].match, "").replace(/(\s)+/, "$1").trim();
         if (remainingString.length === 0) {
             return convertPtClassName(prefixMatches[0].match);
         }
@@ -119,31 +128,104 @@ function getLiteralReplacement(className: string, prefixMatches: Array<{ match: 
     let currentIndex = 0;
     for (const { match, index } of prefixMatches) {
         // Add the strings between the currentIndex and this invalid class name's index
-        newString += className.slice(currentIndex, index);
+        newString += escapeTemplateText(value.slice(currentIndex, index));
         // Add the converted string instead of the original string
         newString += `\${${convertPtClassName(match)}}`;
         // Update the index to immediately after this invalid class name
         currentIndex = index + match.length;
     }
     // Add remaining parts of string that occurred after the last invalid class name
-    newString += className.slice(currentIndex, className.length);
-    // Slice off the quotes, and merge & trim any remaining white space
-    newString = newString.slice(1, -1).replace(/(\s)+/, "$1").trim();
+    newString += escapeTemplateText(value.slice(currentIndex));
+    // Merge & trim any remaining white space
+    newString = newString.replace(/(\s)+/, "$1").trim();
     // Surround with backticks instead for the newly added template strings
     return `\`${newString}\``;
 }
 
-/** Produce replacement text for a `template string` that contains invalid classes. */
-function getTemplateReplacement(className: string, ptClassStrings: string[]) {
-    const templateString = ptClassStrings.reduce((value, cssClass) => {
-        return value === cssClass
-            ? // if the class is the only contents, we can remove the template
-              `${convertPtClassName(cssClass)}`
-            : value.replace(cssClass, `\${${convertPtClassName(cssClass)}}`);
-    }, className);
+const TEMPLATE_ESCAPES: Record<string, string> = {
+    "\b": "\\b",
+    "\t": "\\t",
+    "\n": "\\n",
+    "\v": "\\v",
+    "\f": "\\f",
+    "\r": "\\r",
+    $: "\\$",
+    "\\": "\\\\",
+    "`": "\\`",
+};
 
-    // if the result has a template string inside of it, surround it with backticks
-    return templateString.includes("${") ? `\`${templateString}\`` : templateString;
+/** Escape a string so that, placed between backticks, it evaluates to exactly the same string. */
+function escapeTemplateText(text: string) {
+    let escaped = "";
+    for (const char of text) {
+        const codePoint = char.codePointAt(0)!;
+        if (TEMPLATE_ESCAPES[char] !== undefined) {
+            escaped += TEMPLATE_ESCAPES[char];
+        } else if (
+            codePoint < 0x20 ||
+            codePoint === 0x7f ||
+            codePoint === 0x2028 ||
+            codePoint === 0x2029 ||
+            (codePoint >= 0xd800 && codePoint <= 0xdfff)
+        ) {
+            escaped += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+        } else {
+            escaped += char;
+        }
+    }
+    return escaped;
+}
+
+/**
+ * Produce the replacement for a `template string` element that contains invalid classes.
+ * `sourceText` is the element's own source, including its `` ` ``, `}` or `${` delimiters. Only the
+ * class names are swapped for substitutions; everything else is kept verbatim so existing escapes
+ * and delimiters keep their meaning.
+ */
+function getTemplateReplacement(
+    sourceText: string,
+    node: TSESTree.TemplateElement,
+    prefixMatches: Array<{ match: string; index: number }>,
+): { node: TSESTree.Node; text: string } | undefined {
+    const template = node.parent;
+    if (template?.type !== AST_NODE_TYPES.TemplateLiteral) {
+        return undefined;
+    }
+
+    // if the class is the only contents of an untagged template, we can remove the template
+    if (
+        template.quasis.length === 1 &&
+        template.parent?.type !== AST_NODE_TYPES.TaggedTemplateExpression &&
+        prefixMatches.length === 1 &&
+        node.value.raw === prefixMatches[0].match
+    ) {
+        return { node: template, text: convertPtClassName(prefixMatches[0].match) };
+    }
+
+    let newText = "";
+    let currentIndex = 0;
+    for (const { match, index } of getAllMatches(sourceText)) {
+        // a class name right after an unescaped backslash is part of an escape sequence; leave it alone
+        if (countPrecedingBackslashes(sourceText, index) % 2 === 1) {
+            continue;
+        }
+        newText += sourceText.slice(currentIndex, index);
+        newText += `\${${convertPtClassName(match)}}`;
+        currentIndex = index + match.length;
+    }
+    if (currentIndex === 0) {
+        return undefined;
+    }
+    newText += sourceText.slice(currentIndex);
+    return { node, text: newText };
+}
+
+function countPrecedingBackslashes(text: string, index: number) {
+    let count = 0;
+    while (index - count > 0 && text[index - count - 1] === "\\") {
+        count++;
+    }
+    return count;
 }
 
 /** Wrap the given statement based on the type of the parent node: JSX props, expressions, etc. */
