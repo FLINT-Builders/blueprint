@@ -16,8 +16,7 @@
 //
 // See https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app
 
-import dedent from "dedent";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { basename } from "node:path";
 import { App } from "octokit";
 
@@ -40,9 +39,41 @@ const ARTIFACTS = {
     storybook: "storybook-static/index.html",
 };
 
+/** @param {string} value */
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+/**
+ * Renders untrusted text as a fenced code block so GitHub does not interpret it as HTML or Markdown.
+ * The fence is longer than any backtick run in the text, so the text cannot close it.
+ *
+ * @param {string} text
+ */
+function toFencedCodeBlock(text) {
+    const singleLine = text.replace(/[\r\n]+/g, " ");
+    const longestBacktickRun = Math.max(0, ...(singleLine.match(/`+/g) ?? []).map(run => run.length));
+    const fence = "`".repeat(Math.max(3, longestBacktickRun + 1));
+    return `${fence}\n${singleLine}\n${fence}`;
+}
+
 function getArtifactAnchorLink(pkg) {
     const artifactInfo = artifacts.items.find(a => a.path === ARTIFACTS[pkg]);
-    return `<a href="${artifactInfo?.url}">${pkg}</a>`;
+    let url;
+    try {
+        url = new URL(artifactInfo?.url);
+    } catch {
+        return pkg;
+    }
+    if (url.protocol !== "https:") {
+        return pkg;
+    }
+    return `<a href="${escapeHtml(url.href)}">${pkg}</a>`;
 }
 
 if (process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY && process.env.GITHUB_APP_INSTALLATION_ID) {
@@ -55,16 +86,19 @@ if (process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY && process.e
     const octokit = await app.getInstallationOctokit(Number(process.env.GITHUB_APP_INSTALLATION_ID));
 
     const artifactLinks = Object.keys(ARTIFACTS).map(getArtifactAnchorLink).join(" | ");
-    const currentGitCommitMessage = execSync('git --no-pager log --pretty=format:"%s" -1')
+    const currentGitCommitMessage = execFileSync("git", ["--no-pager", "log", "--pretty=format:%s", "-1"])
         .toString()
-        .trim()
-        .replace(/\\"/g, '\\\\"');
-    const commentBody = dedent`
-        <h3>${currentGitCommitMessage}</h3>
-        Build artifact links for this commit: <strong>${artifactLinks}</strong>
-
-        <em>This is an automated comment from the deploy-preview CircleCI job.</em>
-    `;
+        .trim();
+    // The commit subject is author-controlled, so it must never be interpolated as markup
+    // (and must not pass through dedent, which rewrites escape sequences in its input).
+    const commentBody = [
+        "**Latest commit:**",
+        toFencedCodeBlock(currentGitCommitMessage),
+        "",
+        `Build artifact links for this commit: <strong>${artifactLinks}</strong>`,
+        "",
+        "<em>This is an automated comment from the deploy-preview CircleCI job.</em>",
+    ].join("\n");
 
     const repoParams = {
         owner: "palantir",
