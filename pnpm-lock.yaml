@@ -46,6 +46,7 @@ catalogs:
 overrides:
   '@types/react': 18.3.12
   cheerio: 0.22.0
+  postcss-selector-parser: ^7.1.3
 
 importers:
 
@@ -1085,8 +1086,8 @@ importers:
         specifier: ^8.5.23
         version: 8.5.26
       postcss-selector-parser:
-        specifier: ^7.0.0
-        version: 7.1.1
+        specifier: ^7.1.3
+        version: 7.2.1
       postcss-value-parser:
         specifier: ^4.2.0
         version: 4.2.0
@@ -1576,7 +1577,7 @@ packages:
     resolution: {integrity: sha512-PCqQV3c4CoVm3kdPhyeZ07VmBRdH2EpMFA/pd9OASpOEC3aXNGoqPDAZ80D0cLpMBxnmk0+yNhGsEx31hq7Gtw==}
     engines: {node: '>=18'}
     peerDependencies:
-      postcss-selector-parser: ^7.0.0
+      postcss-selector-parser: ^7.1.3
 
   '@discoveryjs/json-ext@0.5.7':
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
@@ -6409,6 +6410,7 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+    deprecated: This package is no longer needed on supported Node.js versions. Node.js 16+ includes AbortController and AbortSignal as built-in globals. All Node.js versions requiring this polyfill are end-of-life. Use the built-in globals instead.
 
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
@@ -7105,8 +7107,8 @@ packages:
     peerDependencies:
       postcss: ^8.4.29
 
-  postcss-selector-parser@7.1.1:
-    resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
+  postcss-selector-parser@7.2.1:
+    resolution: {integrity: sha512-GwxlMgTTXwIom+ebC7an3k6RaJDwklRQQnfiXsLPGicu8FYV/k/+1/9YY2OU2+r938H2t4X0TDxoif+HP2rjzQ==}
     engines: {node: '>=4'}
 
   postcss-simple-vars@7.0.1:
@@ -9092,9 +9094,9 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
 
-  '@csstools/selector-specificity@5.0.0(postcss-selector-parser@7.1.1)':
+  '@csstools/selector-specificity@5.0.0(postcss-selector-parser@7.2.1)':
     dependencies:
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   '@discoveryjs/json-ext@0.5.7': {}
 
@@ -14831,7 +14833,7 @@ snapshots:
   postcss-calc@10.1.1(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
       postcss-value-parser: 4.2.0
 
   postcss-cli@11.0.1(jiti@2.6.1)(postcss@8.5.26)(tsx@4.21.0):
@@ -14873,7 +14875,7 @@ snapshots:
   postcss-discard-comments@7.0.6(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   postcss-discard-duplicates@7.0.2(postcss@8.5.26):
     dependencies:
@@ -14921,7 +14923,7 @@ snapshots:
       caniuse-api: 3.0.0
       cssnano-utils: 5.0.1(postcss@8.5.26)
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   postcss-minify-font-values@7.0.1(postcss@8.5.26):
     dependencies:
@@ -14946,7 +14948,7 @@ snapshots:
     dependencies:
       cssesc: 3.0.0
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   postcss-modules-extract-imports@3.1.0(postcss@8.5.26):
     dependencies:
@@ -14956,13 +14958,13 @@ snapshots:
     dependencies:
       icss-utils: 5.1.0(postcss@8.5.26)
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
       postcss-value-parser: 4.2.0
 
   postcss-modules-scope@3.2.1(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   postcss-modules-values@4.0.0(postcss@8.5.26):
     dependencies:
@@ -15047,9 +15049,8 @@ snapshots:
     dependencies:
       postcss: 8.5.26
 
-  postcss-selector-parser@7.1.1:
+  postcss-selector-parser@7.2.1:
     dependencies:
-      cssesc: 3.0.0
       util-deprecate: 1.0.2
 
   postcss-simple-vars@7.0.1(postcss@8.5.26):
@@ -15069,7 +15070,7 @@ snapshots:
   postcss-unique-selectors@7.0.5(postcss@8.5.26):
     dependencies:
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   postcss-value-parser@3.3.1: {}
 
@@ -16037,7 +16038,7 @@ snapshots:
     dependencies:
       browserslist: 4.28.2
       postcss: 8.5.26
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
 
   stylelint-config-palantir@7.6.0(postcss-scss@4.0.9(postcss@8.5.26))(postcss@8.5.26)(stylelint@16.25.0(typescript@5.9.3)):
     dependencies:
@@ -16076,7 +16077,7 @@ snapshots:
       mdn-data: 2.24.0
       postcss-media-query-parser: 0.2.3
       postcss-resolve-nested-selector: 0.1.6
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
       postcss-value-parser: 4.2.0
       stylelint: 16.25.0(typescript@5.9.3)
 
@@ -16085,7 +16086,7 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       '@csstools/media-query-list-parser': 4.0.3(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)
-      '@csstools/selector-specificity': 5.0.0(postcss-selector-parser@7.1.1)
+      '@csstools/selector-specificity': 5.0.0(postcss-selector-parser@7.2.1)
       '@dual-bundle/import-meta-resolve': 4.2.1
       balanced-match: 2.0.0
       colord: 2.9.3
@@ -16112,7 +16113,7 @@ snapshots:
       postcss: 8.5.26
       postcss-resolve-nested-selector: 0.1.6
       postcss-safe-parser: 7.0.1(postcss@8.5.26)
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.2.1
       postcss-value-parser: 4.2.0
       resolve-from: 5.0.0
       string-width: 4.2.3
