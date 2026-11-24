@@ -70,7 +70,7 @@ export interface EntityTitleProps extends Props {
     titleURL?: string;
 
     /**
-     * <Tag> components work best - if multiple, wrap in <React.Fragment>
+     * `<Tag>` components work best - if multiple, wrap in `<React.Fragment>`
      */
     tags?: React.ReactNode;
 }
