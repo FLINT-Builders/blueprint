@@ -21,6 +21,8 @@ import { createRule } from "./utils/createRule";
 export const OPTION_COMPONENT = "component";
 export const OPTION_LITERAL = "literal";
 
+const ICON_NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/i;
+
 type Options = ["component" | "literal"];
 type MessageIds = "component" | "literal";
 
@@ -67,13 +69,16 @@ function create(context: TSESLint.RuleContext<MessageIds, Options>, node: TSESTr
     } else if (valueNode.type === AST_NODE_TYPES.Literal && valueNode.value != null && option === OPTION_COMPONENT) {
         // "tick" -> <TickIcon />
         const quotedIconName = sourceCode.getText(valueNode);
-        const iconTag = `<${pascalCase(quotedIconName.slice(1, quotedIconName.length - 1))}Icon />`;
+        const iconName = quotedIconName.slice(1, quotedIconName.length - 1);
+        // the icon name becomes part of a JSX tag, so anything other than a plain kebab-case name could become code
+        const isValidIconName = ICON_NAME_PATTERN.test(iconName);
+        const iconTag = isValidIconName ? `<${pascalCase(iconName)}Icon />` : "<...Icon />";
 
         context.report({
             data: {
                 component: iconTag,
             },
-            fix: fixer => fixer.replaceText(valueNode, `{${iconTag}}`),
+            fix: isValidIconName ? fixer => fixer.replaceText(valueNode, `{${iconTag}}`) : null,
             messageId: OPTION_COMPONENT,
             node,
         });

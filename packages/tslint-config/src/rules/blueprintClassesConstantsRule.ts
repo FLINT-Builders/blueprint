@@ -54,7 +54,7 @@ function walk(ctx: Lint.WalkContext<void>) {
                 const ptClassStrings = prefixMatches.map(m => m.match);
                 const replacementText = isStringLiteral(node)
                     ? // "string literal" likely becomes `${template} string` so we may need to change how it is assigned
-                      wrapForParent(getLiteralReplacement(node.getText(), ptClassStrings), node)
+                      wrapForParent(getLiteralReplacement(node.text, ptClassStrings), node)
                     : getTemplateReplacement(node.getText(), ptClassStrings);
 
                 const replacements = [new Lint.Replacement(node.getStart(), node.getWidth(), replacementText)];
@@ -87,12 +87,15 @@ function getAllMatches(className: string) {
     return ptMatches;
 }
 
-/** Produce replacement text for a string literal that contains invalid classes. */
-function getLiteralReplacement(className: string, ptClassStrings: string[]) {
-    // remove all illegal classnames, then slice off the quotes, then merge & trim any remaining white space
+/**
+ * Produce replacement text for a string literal that contains invalid classes.
+ * `value` is the literal's text without quotes, so it must go through `escapeTemplateText` before
+ * it is placed in a template.
+ */
+function getLiteralReplacement(value: string, ptClassStrings: string[]) {
+    // remove all illegal classnames, then merge & trim any remaining white space
     const stringWithoutPtClasses = ptClassStrings
-        .reduce((value, cssClass) => value.replace(cssClass, ""), className)
-        .slice(1, -1)
+        .reduce((text, cssClass) => text.replace(cssClass, ""), value)
         .replace(/(\s)+/, "$1")
         .trim();
     // special case: only one invalid class name
@@ -101,7 +104,41 @@ function getLiteralReplacement(className: string, ptClassStrings: string[]) {
     }
     // otherwise produce a `template string`
     const templateStrings = ptClassStrings.map(n => `\${${convertPtClassName(n)}}`).join(" ");
-    return `\`${[templateStrings, stringWithoutPtClasses].join(" ").trim()}\``;
+    return `\`${[templateStrings, escapeTemplateText(stringWithoutPtClasses)].join(" ").trim()}\``;
+}
+
+const TEMPLATE_ESCAPES: Record<string, string> = {
+    "\b": "\\b",
+    "\t": "\\t",
+    "\n": "\\n",
+    "\v": "\\v",
+    "\f": "\\f",
+    "\r": "\\r",
+    $: "\\$",
+    "\\": "\\\\",
+    "`": "\\`",
+};
+
+/** Escape a string so that, placed between backticks, it evaluates to exactly the same string. */
+function escapeTemplateText(text: string) {
+    let escaped = "";
+    for (const char of text) {
+        const codePoint = char.codePointAt(0)!;
+        if (TEMPLATE_ESCAPES[char] !== undefined) {
+            escaped += TEMPLATE_ESCAPES[char];
+        } else if (
+            codePoint < 0x20 ||
+            codePoint === 0x7f ||
+            codePoint === 0x2028 ||
+            codePoint === 0x2029 ||
+            (codePoint >= 0xd800 && codePoint <= 0xdfff)
+        ) {
+            escaped += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+        } else {
+            escaped += char;
+        }
+    }
+    return escaped;
 }
 
 /** Produce replacement text for a `template string` that contains invalid classes. */
