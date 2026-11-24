@@ -610,6 +610,9 @@ importers:
       escape-html:
         specifier: ^1.0.3
         version: 1.0.3
+      jsdom:
+        specifier: 'catalog:'
+        version: 27.1.0
       marked:
         specifier: ^9.1.6
         version: 9.1.6
@@ -650,6 +653,9 @@ importers:
       classnames:
         specifier: 'catalog:'
         version: 2.5.1
+      dompurify:
+        specifier: ^3.2.7
+        version: 3.2.7
       fuzzaldrin-plus:
         specifier: ^0.6.0
         version: 0.6.0

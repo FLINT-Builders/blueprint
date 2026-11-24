@@ -22,6 +22,7 @@ import { Checkbox, Classes, Code } from "@blueprintjs/core";
 
 import { COMPONENT_DISPLAY_NAMESPACE } from "../common";
 import { DocumentationContext } from "../common/context";
+import { sanitizeHtml } from "../common/sanitizeHtml";
 import { Example } from "../components/example";
 
 const MODIFIER_ATTR_REGEXP = /\{\{:modifier}}/g;
@@ -66,7 +67,10 @@ export const CssExample: React.FC<Tag> = ({ value }) => {
             onChange={getModifierToggleHandler(modifier.name)}
         >
             <Code data-modifier={modifier.name}>{modifier.name}</Code>
-            <div className="docs-prop-description" dangerouslySetInnerHTML={{ __html: modifier.documentation }} />
+            <div
+                className="docs-prop-description"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(modifier.documentation) }}
+            />
         </Checkbox>
     ));
 
@@ -81,7 +85,7 @@ export const CssExample: React.FC<Tag> = ({ value }) => {
             <Example id={reference} options={options.length > 0 ? options : false} html={exampleHtml} />
             <div
                 className={classNames("docs-example-markup", Classes.RUNNING_TEXT)}
-                dangerouslySetInnerHTML={{ __html: markupHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(markupHtml) }}
             />
         </>
     );

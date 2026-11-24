@@ -40,9 +40,17 @@ DeprecatedTag.displayName = `${COMPONENT_DISPLAY_NAMESPACE}.DeprecatedTag`;
  */
 function markdownCode(text: string) {
     return {
-        __html: text
-            .replace("<", "&lt;")
+        __html: escapeHtml(text)
             .replace(/```([^`]+)```/g, (_, code) => `<pre>${code}</pre>`)
             .replace(/`([^`]+)`/g, (_, code) => `<code>${code}</code>`),
     };
+}
+
+function escapeHtml(text: string) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }

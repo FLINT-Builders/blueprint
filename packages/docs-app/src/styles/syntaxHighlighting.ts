@@ -22,6 +22,11 @@ import { Classes as DocsClasses } from "@blueprintjs/docs-theme";
 
 let monacoEditor: typeof editor | undefined;
 
+/**
+ * Original markup of each colorized code block, kept out of the DOM so that documentation content cannot supply it.
+ */
+const originalCodeMarkup = new WeakMap<HTMLElement, string>();
+
 async function initializeMonaco() {
     monacoEditor = (await import(/* webpackChunkName: "monaco-editor" */ "monaco-editor")).editor;
     monacoEditor.defineTheme("blueprint-dark", MonacoThemeDark);
@@ -42,15 +47,16 @@ export async function highlightCodeBlocks() {
     for (const block of Array.from(codeBlocks)) {
         const targetTheme = Utils.isDarkTheme(block) ? "dark" : "light";
         const colorized = block.getAttribute("data-colorized");
+        const originalMarkup = originalCodeMarkup.get(block);
         if (colorized === targetTheme) {
             continue;
-        } else if (colorized != null) {
+        } else if (colorized != null && originalMarkup !== undefined) {
             // block was already colorized with a different theme, so we must re-colorize it from the original markup
-            block.innerHTML = block.getAttribute("data-original-code");
+            block.innerHTML = originalMarkup;
         }
 
         // save the original markup for later, if we have to re-colorize the theme
-        block.setAttribute("data-original-code", block.innerHTML);
+        originalCodeMarkup.set(block, block.innerHTML);
         monacoEditor.colorizeElement(block, {
             theme: `blueprint-${targetTheme}`,
         });

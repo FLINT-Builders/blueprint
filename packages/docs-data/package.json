@@ -55,6 +55,7 @@
         "@blueprintjs/docs-theme": "workspace:^",
         "@documentalist/compiler": "^5.0.0",
         "escape-html": "^1.0.3",
+        "jsdom": "catalog:",
         "marked": "^9.1.6",
         "package-json": "^10.0.1",
         "semver": "^7.5.4"
