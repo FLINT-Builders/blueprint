@@ -137,11 +137,28 @@ export default {
         https: false,
         host: "0.0.0.0",
         hot: true,
+        /** @param {import("webpack-dev-server")} devServer */
+        onListening: devServer => {
+            // webpack-dev-server v4 does not listen for "error" on client sockets, so a peer that violates a ws
+            // limit (e.g. too many message fragments) would otherwise crash the process. ws closes the socket itself.
+            devServer.webSocketServer?.implementation.on("connection", client => {
+                client.on("error", error => devServer.logger.warn(`WebSocket client error: ${error.message}`));
+            });
+        },
         open: false,
         port: DEV_PORT,
         static: {
             // N.B. it is important to exclude TS sources from this directory allow hot module replacement to work
             directory: resolve(cwd(), "src", "assets"),
+        },
+        webSocketServer: {
+            options: {
+                // The HMR client only sends small, unfragmented messages. ws keeps everything a peer buffered until
+                // the closing handshake ends, so keep that bounded well below the ws defaults (16384 / 262144).
+                maxBufferedChunks: 1024,
+                maxFragments: 1024,
+            },
+            type: "ws",
         },
     },
 
