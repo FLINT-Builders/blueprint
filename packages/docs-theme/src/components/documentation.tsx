@@ -396,11 +396,6 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
     private handleApiBrowserClose = () => this.setState({ isApiBrowserOpen: false });
 }
 
-/** Shorthand for element.querySelector() + cast to HTMLElement */
-function queryHTMLElement(parent: Element, selector: string) {
-    return parent.querySelector<HTMLElement>(selector);
-}
-
 /**
  * Returns the reference of the closest section within `offset` pixels of the top of the viewport.
  */
@@ -425,7 +420,11 @@ function scrollToReference(reference: string, scrollContainer: HTMLElement = doc
     // without rAF, on initial load this would scroll to the bottom because the CSS had not been applied.
     // with rAF, CSS is applied before updating scroll positions so all elements are in their correct places.
     requestAnimationFrame(() => {
-        const headingAnchor = queryHTMLElement(scrollContainer, `a[data-route="${reference}"]`);
+        // compare attribute values directly rather than interpolating the reference into a selector,
+        // since it comes from the URL hash and may contain characters that are not valid in a CSS selector
+        const headingAnchor = Array.from(scrollContainer.querySelectorAll<HTMLElement>("a[data-route]")).find(
+            anchor => anchor.getAttribute("data-route") === reference,
+        );
         if (headingAnchor != null && headingAnchor.parentElement != null) {
             const scrollOffset = headingAnchor.parentElement!.offsetTop + headingAnchor.offsetTop;
             scrollContainer.scrollTop = scrollOffset;
