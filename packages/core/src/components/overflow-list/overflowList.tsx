@@ -179,7 +179,7 @@ export class OverflowList<T> extends Component<OverflowListProps<T>, OverflowLis
         if (
             prevProps.collapseFrom !== this.props.collapseFrom ||
             prevProps.items !== this.props.items ||
-            prevProps.minVisibleItems !== this.props.minVisibleItems ||
+            normalizeMinVisible(prevProps.minVisibleItems) !== normalizeMinVisible(this.props.minVisibleItems) ||
             prevProps.overflowRenderer !== this.props.overflowRenderer ||
             prevProps.alwaysRenderOverflow !== this.props.alwaysRenderOverflow ||
             prevProps.visibleItemRenderer !== this.props.visibleItemRenderer
@@ -265,15 +265,20 @@ export class OverflowList<T> extends Component<OverflowListProps<T>, OverflowLis
 
         // if lastChopSize was 1, then our binary search has exhausted.
         const partitionExhausted = this.state.lastChopSize === 1;
-        const minVisible = this.props.minVisibleItems ?? 0;
+        const minVisible = normalizeMinVisible(this.props.minVisibleItems);
+        const visibleCount = this.state.visible.length;
+        const canShift = this.state.chopSize > 0;
 
+        // every shrink or grow step must move at least one item, otherwise the state update
+        // would never settle and componentDidUpdate would repartition forever.
         // spacer has flex-shrink and width 1px so if it's much smaller then we know to shrink
-        const shouldShrink = this.spacer.offsetWidth < 0.9 && this.state.visible.length > minVisible;
+        const shouldShrink = this.spacer.offsetWidth < 0.9 && visibleCount > 0 && visibleCount > minVisible && canShift;
 
         // we only check partitionExhausted for shouldGrow to ensure shrinking is the final operation.
         const shouldGrow =
-            (this.spacer.offsetWidth >= 1 || this.state.visible.length < minVisible) &&
+            (this.spacer.offsetWidth >= 1 || visibleCount < minVisible) &&
             this.state.overflow.length > 0 &&
+            canShift &&
             !partitionExhausted;
 
         if (shouldShrink || shouldGrow) {
@@ -327,6 +332,12 @@ export class OverflowList<T> extends Component<OverflowListProps<T>, OverflowLis
     private isFirstPartitionCycle(currentChopSize: number): boolean {
         return currentChopSize === this.defaultChopSize();
     }
+}
+
+/** Coerces `minVisibleItems` to a non-negative number; negative, NaN, and non-numeric values become 0. */
+function normalizeMinVisible(value: number | undefined): number {
+    const num = Number(value);
+    return num > 0 ? num : 0;
 }
 
 function halve(num: number): number {
