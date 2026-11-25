@@ -24,6 +24,12 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@blueprintjs/icons";
 
 import { DateUtils, Months } from "../../common";
 import { DatePickerCaptionClasses as CaptionClasses, ReactDayPickerClasses } from "../../common/classes";
+import {
+    getMonthCaptionDate,
+    getYearCaptionDate,
+    getYearOptionsWindow,
+    MAX_YEAR_OPTIONS,
+} from "../../common/reactDayPickerUtils";
 import { useMonthSelectRightOffset } from "../../common/useMonthSelectRightOffset";
 import { DatePickerContext } from "../date-picker/datePickerContext";
 
@@ -83,23 +89,33 @@ export const DatePickerCaption = (props: CaptionProps) => {
     // build the list of available years, relying on react-day-picker's default date-fns formatter or a
     // user-provided formatter to localize the year "names"
     const { formatYearCaption } = formatters;
+    const isDisplayYearAfterMaxYear = displayYear > maxYear;
+    const [firstYearOption, lastYearOption] = getYearOptionsWindow(
+        minYear,
+        maxYear,
+        displayYear,
+        // reserve one option for the disabled out-of-bounds display year
+        isDisplayYearAfterMaxYear ? MAX_YEAR_OPTIONS - 1 : MAX_YEAR_OPTIONS,
+    );
     const allYearOptions = useMemo<OptionProps[]>(() => {
         const years: OptionProps[] = [];
-        for (let year = minYear; year <= maxYear; year++) {
-            const yearDate = new Date(year, 0);
-            const yearCaption = formatYearCaption(yearDate, { locale });
-            years.push({ label: innerText(yearCaption), value: year });
+        const pushYearOption = (year: number, disabled?: boolean) => {
+            const yearDate = getYearCaptionDate(year);
+            if (yearDate !== undefined) {
+                const yearCaption = formatYearCaption(yearDate, { locale });
+                years.push({ disabled, label: innerText(yearCaption), value: year });
+            }
+        };
+        for (let year = firstYearOption; year <= lastYearOption; year++) {
+            pushYearOption(year);
+        }
+        // allow out-of-bounds years but disable the option.
+        // this handles the Dec 2016 case in https://github.com/palantir/blueprint/issues/391
+        if (isDisplayYearAfterMaxYear) {
+            pushYearOption(displayYear, true);
         }
         return years;
-    }, [formatYearCaption, maxYear, minYear, locale]);
-
-    // allow out-of-bounds years but disable the option.
-    // this handles the Dec 2016 case in https://github.com/palantir/blueprint/issues/391
-    if (displayYear > maxYear) {
-        const displayYearDate = new Date(displayYear, 0);
-        const displayYearCaption = formatYearCaption(displayYearDate, { locale });
-        allYearOptions.push({ disabled: true, label: innerText(displayYearCaption), value: displayYear });
-    }
+    }, [displayYear, firstYearOption, formatYearCaption, isDisplayYearAfterMaxYear, lastYearOption, locale]);
 
     const handleMonthSelectChange = useCallback(
         (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -124,9 +140,8 @@ export const DatePickerCaption = (props: CaptionProps) => {
     const allMonths = useMemo<string[]>(() => {
         const months: string[] = [];
         for (let i = Months.JANUARY; i <= Months.DECEMBER; i++) {
-            const monthDate = new Date(displayYear, i);
-            const formattedMonth = formatMonthCaption(monthDate, { locale });
-            months.push(innerText(formattedMonth));
+            const monthDate = getMonthCaptionDate(displayYear, i);
+            months.push(monthDate === undefined ? "" : innerText(formatMonthCaption(monthDate, { locale })));
         }
         return months;
     }, [displayYear, formatMonthCaption, locale]);

@@ -24,6 +24,7 @@ import { Classes, type DateRange, DateUtils, Errors, TimezoneUtils } from "../..
 import { dayPickerClassNameOverrides } from "../../common/classes";
 import { LOCALE, MAX_DATE, MIN_DATE } from "../dateConstants";
 import { DateFnsLocalizedComponent } from "../dateFnsLocalizedComponent";
+import { DatePickerCaptionDropdowns } from "../react-day-picker/datePickerCaptionDropdowns";
 import { DatePickerDropdown } from "../react-day-picker/datePickerDropdown";
 import { IconLeft, IconRight } from "../react-day-picker/datePickerNavIcons";
 import { DatePickerShortcutMenu, type DateRangeShortcut } from "../shortcuts/shortcuts";
@@ -98,6 +99,7 @@ export class DatePicker extends DateFnsLocalizedComponent<DatePickerProps, DateP
                                 ...dayPickerProps?.classNames,
                             }}
                             components={{
+                                Caption: DatePickerCaptionDropdowns,
                                 Dropdown: DatePickerDropdown,
                                 IconLeft,
                                 IconRight,
