@@ -129,15 +129,22 @@ export function Portal(
 Portal.displayName = `${DISPLAYNAME_PREFIX}.Portal`;
 
 function maybeRemoveClass(classList: DOMTokenList, className?: string) {
-    if (className != null && className !== "") {
-        classList.remove(...className.split(" "));
+    const tokens = getClassTokens(className);
+    if (tokens.length > 0) {
+        classList.remove(...tokens);
     }
 }
 
 function maybeAddClass(classList: DOMTokenList, className?: string) {
-    if (className != null && className !== "") {
-        classList.add(...className.split(" "));
+    const tokens = getClassTokens(className);
+    if (tokens.length > 0) {
+        classList.add(...tokens);
     }
+}
+
+/** DOMTokenList methods throw on empty tokens or tokens containing whitespace. */
+function getClassTokens(className?: string): string[] {
+    return className?.split(/[\t\n\f\r ]+/).filter(token => token !== "") ?? [];
 }
 
 function addStopPropagationListeners(portalElement: HTMLElement, eventNames?: Array<keyof HTMLElementEventMap>) {

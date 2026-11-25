@@ -23,7 +23,10 @@ export function measureTextWidth(text: string, className = "", containerElement 
         return 0;
     }
     const span = document.createElement("span");
-    span.classList.add(className);
+    const classTokens = className.split(/[\t\n\f\r ]+/).filter(token => token !== "");
+    if (classTokens.length > 0) {
+        span.classList.add(...classTokens);
+    }
     span.textContent = text;
 
     containerElement.appendChild(span);
