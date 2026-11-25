@@ -203,12 +203,16 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = forwardRef((pro
             {options.map((option, index) => {
                 const isSelected = selectedValue === option.value;
                 return (
+                    // Options are often loaded from untrusted data, so only the documented fields reach the DOM.
                     <SegmentedControlOption
-                        {...option}
+                        className={option.className}
                         disabled={option.disabled || disabled}
+                        icon={option.icon}
                         intent={intent}
                         isSelected={isSelected}
                         key={option.value}
+                        label={option.label}
+                        value={option.value}
                         // eslint-disable-next-line @typescript-eslint/no-deprecated
                         large={large}
                         onClick={handleOptionClick}
