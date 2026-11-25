@@ -1,0 +1,15 @@
+{
+    "extends": "../../config/tsconfig.node",
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": false,
+        "importHelpers": false,
+        "lib": ["es2022"],
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "noEmit": true,
+        "target": "es2022",
+        "types": ["node"]
+    },
+    "include": ["src/sass/sassSvgInliner.test.ts"]
+}
