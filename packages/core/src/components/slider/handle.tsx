@@ -220,9 +220,10 @@ export class Handle extends AbstractPureComponent<InternalHandleProps, HandleSta
         return newValue;
     }
 
-    /** Clamp value between min and max props */
+    /** Clamp value between min and max props, or leave it unchanged if min is greater than max */
     private clamp(value: number) {
-        return Utils.clamp(value, this.props.min, this.props.max);
+        const { max, min } = this.props;
+        return min > max ? value : Utils.clamp(value, min, max);
     }
 
     private getHandleElementCenterPixel(handleElement: HTMLElement) {

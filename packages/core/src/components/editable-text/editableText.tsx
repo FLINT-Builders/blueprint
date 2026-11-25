@@ -433,8 +433,9 @@ export class EditableText extends AbstractPureComponent<EditableTextProps, Edita
             if (multiline && this.state.isEditing && /\n$/.test(textContent ?? "")) {
                 scrollHeight += lineHeight;
             }
-            if (lineHeight > 0) {
-                // line height could be 0 if the isNaN block from getLineHeight kicks in
+            // line height could be 0 if the isNaN block from getLineHeight kicks in,
+            // and minLines greater than maxLines leaves the height unbounded
+            if (lineHeight > 0 && minLines! <= maxLines!) {
                 scrollHeight = clamp(scrollHeight, minLines! * lineHeight, maxLines! * lineHeight);
             }
             // Chrome's input caret height misaligns text so the line-height must be larger than font-size.
