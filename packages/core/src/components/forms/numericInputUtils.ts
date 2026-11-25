@@ -16,22 +16,50 @@
 
 import { clamp } from "../../common/utils";
 
-/** Returns the `decimal` number separator based on locale */
-function getDecimalSeparator(locale: string) {
+const FALLBACK_LOCALE = "en-US";
+
+/**
+ * Returns the locale tag that `Intl.NumberFormat` resolves for `locale`, or `FALLBACK_LOCALE` if the
+ * locale is rejected. Formatting with a malformed tag (e.g. "en_US") throws a `RangeError`, so only the
+ * resolved tag may be passed on to `toLocaleString` and the other locale-dependent helpers below.
+ */
+function resolveLocale(locale: string): string;
+function resolveLocale(locale: string | undefined): string | undefined;
+function resolveLocale(locale: string | undefined) {
+    if (locale === undefined) {
+        return undefined;
+    }
+    try {
+        return new Intl.NumberFormat(locale).resolvedOptions().locale;
+    } catch {
+        return FALLBACK_LOCALE;
+    }
+}
+
+function escapeRegExp(value: string) {
+    return value.replace(/[\\^$.*+?()[\]{}|\-/]/g, "\\$&");
+}
+
+/** Returns the `decimal` number separator based on a locale returned by `resolveLocale` */
+function getDecimalSeparator(resolvedLocale: string) {
     const testNumber = 1.9;
-    const testText = testNumber.toLocaleString(locale);
-    const one = (1).toLocaleString(locale);
-    const nine = (9).toLocaleString(locale);
-    const pattern = `${one}(.+)${nine}`;
+    const testText = testNumber.toLocaleString(resolvedLocale);
+    const one = (1).toLocaleString(resolvedLocale);
+    const nine = (9).toLocaleString(resolvedLocale);
+    const pattern = `${escapeRegExp(one)}(.+)${escapeRegExp(nine)}`;
 
     const result = new RegExp(pattern).exec(testText);
 
     return (result && result[1]) || ".";
 }
 
-export function toLocaleString(num: number, locale: string = "en-US") {
+export function toLocaleString(num: number, locale: string = FALLBACK_LOCALE) {
+    const resolvedLocale = resolveLocale(locale);
     // HACKHACK: roundingPriority is not supported yet in TypeScript https://github.com/microsoft/TypeScript/issues/43336
-    return sanitizeNumericInput(num.toLocaleString(locale, { roundingPriority: "morePrecision" } as any), locale);
+    return sanitizeResolvedNumericInput(
+        num.toLocaleString(resolvedLocale, { roundingPriority: "morePrecision" } as any),
+        resolvedLocale,
+    );
 }
 
 export function clampValue(value: number, min?: number, max?: number) {
@@ -47,8 +75,8 @@ export function getValueOrEmptyValue(value: number | string = "") {
 }
 
 /** Transform the localized character (ex. "") to a javascript recognizable string number (ex. "10.99")  */
-function transformLocalizedNumberToStringNumber(character: string, locale: string) {
-    const charactersMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(value => value.toLocaleString(locale));
+function transformLocalizedNumberToStringNumber(character: string, resolvedLocale: string) {
+    const charactersMap = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(value => value.toLocaleString(resolvedLocale));
     const jsNumber = charactersMap.indexOf(character);
 
     if (jsNumber !== -1) {
@@ -66,12 +94,13 @@ export function parseStringToStringNumber(value: number | string, locale: string
     }
 
     if (locale !== undefined) {
-        const decimalSeparator = getDecimalSeparator(locale);
-        const sanitizedString = sanitizeNumericInput(valueAsString, locale);
+        const resolvedLocale = resolveLocale(locale);
+        const decimalSeparator = getDecimalSeparator(resolvedLocale);
+        const sanitizedString = sanitizeResolvedNumericInput(valueAsString, resolvedLocale);
 
         return sanitizedString
             .split("")
-            .map(character => transformLocalizedNumberToStringNumber(character, locale))
+            .map(character => transformLocalizedNumberToStringNumber(character, resolvedLocale))
             .join("")
             .replace(decimalSeparator, ".");
     }
@@ -115,7 +144,7 @@ export function isValidNumericKeyboardEvent(e: React.KeyboardEvent, locale: stri
 
     // now we can simply check that the single character that wants to be printed
     // is a floating-point number character that we're allowed to print.
-    return isFloatingPointNumericCharacter(e.key, locale);
+    return getFloatingPointNumericCharacterRegex(resolveLocale(locale)).test(e.key);
 }
 
 /**
@@ -129,20 +158,15 @@ export function isValidNumericKeyboardEvent(e: React.KeyboardEvent, locale: stri
  * See here for the input[type="number"].value spec:
  * https://www.w3.org/TR/2012/WD-html-markup-20120329/input.number.html#input.number.attrs.value
  */
-function isFloatingPointNumericCharacter(character: string, locale: string | undefined) {
-    if (locale !== undefined) {
-        const decimalSeparator = getDecimalSeparator(locale).replace(".", "\\.");
-        const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(value => value.toLocaleString(locale)).join("");
-        const localeFloatingPointNumericCharacterRegex = new RegExp(
-            "^[Ee" + numbers + "\\+\\-" + decimalSeparator + "]$",
-        );
-
-        return localeFloatingPointNumericCharacterRegex.test(character);
-    } else {
-        const floatingPointNumericCharacterRegex = /^[Ee0-9\+\-\.]$/;
-
-        return floatingPointNumericCharacterRegex.test(character);
+function getFloatingPointNumericCharacterRegex(resolvedLocale: string | undefined) {
+    if (resolvedLocale === undefined) {
+        return /^[Ee0-9\+\-\.]$/;
     }
+    const decimalSeparator = escapeRegExp(getDecimalSeparator(resolvedLocale));
+    const numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        .map(value => escapeRegExp(value.toLocaleString(resolvedLocale)))
+        .join("");
+    return new RegExp("^[Ee" + numbers + "\\+\\-" + decimalSeparator + "]$");
 }
 
 /**
@@ -171,8 +195,13 @@ function convertFullWidthNumbersToAscii(value: string) {
  * Convert full-width (Japanese) numbers to ASCII, and strip all characters that are not valid floating-point numeric characters
  */
 export function sanitizeNumericInput(value: string, locale: string | undefined) {
+    return sanitizeResolvedNumericInput(value, resolveLocale(locale));
+}
+
+function sanitizeResolvedNumericInput(value: string, resolvedLocale: string | undefined) {
     const valueChars = convertFullWidthNumbersToAscii(value).split("");
-    const sanitizedValueChars = valueChars.filter(valueChar => isFloatingPointNumericCharacter(valueChar, locale));
+    const numericCharacterRegex = getFloatingPointNumericCharacterRegex(resolvedLocale);
+    const sanitizedValueChars = valueChars.filter(valueChar => numericCharacterRegex.test(valueChar));
 
     return sanitizedValueChars.join("");
 }
