@@ -34,7 +34,18 @@ export function toLocaleString(num: number, locale: string = "en-US") {
     return sanitizeNumericInput(num.toLocaleString(locale, { roundingPriority: "morePrecision" } as any), locale);
 }
 
+/**
+ * Returns `true` if both bounds are defined and `min` is greater than `max`.
+ * Inverted bounds are reported by `NumericInput` and otherwise treated as unbounded.
+ */
+export function areBoundsInverted(min?: number | null, max?: number | null) {
+    return min != null && max != null && min > max;
+}
+
 export function clampValue(value: number, min?: number, max?: number) {
+    if (areBoundsInverted(min, max)) {
+        return value;
+    }
     // defaultProps won't work if the user passes in null, so just default
     // to +/- infinity here instead, as a catch-all.
     const adjustedMin = min != null ? min : -Infinity;
