@@ -23,6 +23,7 @@ import type { DateRange } from "../../common";
 import { DateRangeSelectionStrategy } from "../../common/dateRangeSelectionStrategy";
 import { MonthAndYear } from "../../common/monthAndYear";
 import { dateRangeToDayPickerRange } from "../../common/reactDayPickerUtils";
+import { DatePickerCaptionDropdowns } from "../react-day-picker/datePickerCaptionDropdowns";
 import { DatePickerDropdown } from "../react-day-picker/datePickerDropdown";
 import { IconLeft, IconRight } from "../react-day-picker/datePickerNavIcons";
 
@@ -77,6 +78,7 @@ export const ContiguousDayRangePicker: React.FC<DayRangePickerProps> = ({
             {...dayPickerProps}
             captionLayout="dropdown-buttons"
             components={{
+                Caption: DatePickerCaptionDropdowns,
                 Dropdown: DatePickerDropdown,
                 IconLeft,
                 IconRight,
