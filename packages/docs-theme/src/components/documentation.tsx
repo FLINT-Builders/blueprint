@@ -132,7 +132,7 @@ export interface DocumentationState {
 
 export class Documentation extends PureComponent<DocumentationProps, DocumentationState> {
     /** Map of section route to containing page reference. */
-    private routeToPage: { [route: string]: string };
+    private routeToPage = new Map<string, string>();
 
     private contentElement: HTMLElement | null = null;
 
@@ -154,7 +154,6 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
         };
 
         // build up static map of all references to their page, for navigation / routing
-        this.routeToPage = {};
         eachLayoutNode(this.props.docs.nav, (node, parents) => {
             if (isPageNode(node)) {
                 if (this.props.navigatorExclude?.(node)) {
@@ -162,9 +161,9 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
                     // to ensure the user cannnot navigate to it with hotkeys or through the URL
                     return;
                 }
-                this.routeToPage[node.route] = node.reference;
+                this.routeToPage.set(node.route, node.reference);
             } else if (parents[0] != null) {
-                this.routeToPage[node.route] = parents[0].reference;
+                this.routeToPage.set(node.route, parents[0].reference);
             }
         });
     }
@@ -172,6 +171,7 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
     public render() {
         const { activeApiMember, activePageId, activeSectionId, isApiBrowserOpen } = this.state;
         const { nav, pages } = this.props.docs;
+        const page = getOwnPage(pages, activePageId) ?? getOwnPage(pages, this.props.defaultPageId);
         const rootClasses = classNames(
             "docs-root",
             { "docs-examples-only": location.search === "?examples" },
@@ -239,7 +239,7 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
                                 role="main"
                             >
                                 <Page
-                                    page={pages[activePageId]!}
+                                    page={page!}
                                     renderActions={this.props.renderPageActions}
                                     tagRenderers={this.props.tagRenderers}
                                 />
@@ -332,8 +332,8 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
 
     private handleNavigation = (activeSectionId: string) => {
         // only update state if this section reference is valid
-        const activePageId = this.routeToPage[activeSectionId];
-        if (activeSectionId !== undefined && activePageId !== undefined) {
+        const activePageId = this.routeToPage.get(activeSectionId);
+        if (activePageId !== undefined) {
             this.setState({ activePageId, activeSectionId, isNavigatorOpen: false });
             this.scrollToActiveSection();
         }
@@ -383,7 +383,7 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
         // active section cannot actually be selected in the nav (often a short one at the end).
         const currentSectionId = location.hash.slice(1);
         // this map is built by an in-order traversal so the keys are actually sorted correctly!
-        const sections = Object.keys(this.routeToPage);
+        const sections = Array.from(this.routeToPage.keys());
         const index = sections.indexOf(currentSectionId);
         const newIndex = index === -1 ? 0 : (index + direction + sections.length) % sections.length;
         // updating hash triggers event listener which sets new state.
@@ -394,6 +394,10 @@ export class Documentation extends PureComponent<DocumentationProps, Documentati
         this.setState({ activeApiMember, isApiBrowserOpen: true });
 
     private handleApiBrowserClose = () => this.setState({ isApiBrowserOpen: false });
+}
+
+function getOwnPage(pages: DocsData["pages"], pageId: string): PageData | undefined {
+    return Object.hasOwn(pages, pageId) ? pages[pageId] : undefined;
 }
 
 /** Shorthand for element.querySelector() + cast to HTMLElement */
