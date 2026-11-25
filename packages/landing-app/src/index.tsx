@@ -28,4 +28,4 @@ initializeLogo(
 
 initializeSVGs(document.querySelector<HTMLElement>(".landing-wireframes"));
 
-document.getElementById("copyright").innerHTML = `© 2014–${new Date().getFullYear()} Palantir Technologies`;
+document.getElementById("copyright").textContent = `© 2014–${new Date().getFullYear()} Palantir Technologies`;
