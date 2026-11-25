@@ -121,7 +121,9 @@ export default {
     devtool: IS_PRODUCTION ? false : "eval-source-map",
 
     devServer: {
-        allowedHosts: "all",
+        // "auto" rejects Host/Origin headers other than localhost, *.localhost, and IP literals, which blocks
+        // DNS rebinding. Do not set this to "all"; list extra hostnames explicitly if they are needed.
+        allowedHosts: "auto",
         client: {
             overlay: {
                 warnings: true,
@@ -134,11 +136,11 @@ export default {
             stats: "errors-only",
         },
         historyApiFallback: true,
-        https: false,
-        host: "0.0.0.0",
+        host: "127.0.0.1",
         hot: true,
         open: false,
         port: DEV_PORT,
+        server: "http",
         static: {
             // N.B. it is important to exclude TS sources from this directory allow hot module replacement to work
             directory: resolve(cwd(), "src", "assets"),
