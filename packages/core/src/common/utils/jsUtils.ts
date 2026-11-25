@@ -78,6 +78,10 @@ export function countDecimalPlaces(num: number) {
     while (Math.round(num * e) / e !== num) {
         e *= 10;
         p++;
+        if (!isFinite(e)) {
+            // values too small to scale to an integer (e.g. subnormals) would otherwise loop forever
+            return 0;
+        }
     }
     return p;
 }
