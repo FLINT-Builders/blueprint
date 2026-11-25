@@ -213,16 +213,22 @@ export class TimezoneSelect extends AbstractPureComponent<TimezoneSelectProps, T
     }
 
     private filterItems: ItemListPredicate<TimezoneWithNames> = (query, items) => {
-        // using list predicate so only one RegExp instance is needed
-        // escape bad regex characters, let spaces act as any separator
-        const expr = new RegExp(query.replace(/([[()+*?])/g, "\\$1").replace(" ", "[ _/\\(\\)]+"), "i");
+        // the query is matched literally (never compiled as a RegExp) so that user input cannot
+        // trigger catastrophic backtracking or syntax errors; spaces act as any separator
+        const words = query
+            .toLowerCase()
+            .split(" ")
+            .filter(word => word.length > 0);
+        if (words.length === 0) {
+            return items;
+        }
 
         return items.filter(
             item =>
-                expr.test(item.ianaCode) ||
-                expr.test(item.label) ||
-                expr.test(item.longName) ||
-                expr.test(item.shortName),
+                matchesQueryWords(item.ianaCode, words) ||
+                matchesQueryWords(item.label, words) ||
+                matchesQueryWords(item.longName, words) ||
+                matchesQueryWords(item.shortName, words),
         );
     };
 
@@ -244,4 +250,41 @@ export class TimezoneSelect extends AbstractPureComponent<TimezoneSelectProps, T
     private handleItemSelect = (timezone: TimezoneWithNames) => this.props.onChange?.(timezone.ianaCode);
 
     private handleQueryChange = (query: string) => this.setState({ query });
+}
+
+const QUERY_WORD_SEPARATORS = new Set([" ", "_", "/", "(", ")"]);
+
+/**
+ * Case-insensitive literal search for `words` appearing in order within `text`, where each
+ * pair of consecutive words is separated by one or more separator characters (space, underscore,
+ * slash, or parentheses). `words` must already be lowercase and non-empty.
+ *
+ * Tracks the set of reachable end positions after each word, so the running time is bounded
+ * by the text length times the number of words regardless of the query's contents.
+ */
+function matchesQueryWords(text: string, words: string[]): boolean {
+    const haystack = text.toLowerCase();
+    const [firstWord, ...restWords] = words;
+
+    let ends = new Set<number>();
+    for (let start = haystack.indexOf(firstWord); start !== -1; start = haystack.indexOf(firstWord, start + 1)) {
+        ends.add(start + firstWord.length);
+    }
+
+    for (const word of restWords) {
+        if (ends.size === 0) {
+            return false;
+        }
+        const nextEnds = new Set<number>();
+        for (const end of ends) {
+            for (let start = end + 1; QUERY_WORD_SEPARATORS.has(haystack[start - 1]); start++) {
+                if (haystack.startsWith(word, start)) {
+                    nextEnds.add(start + word.length);
+                }
+            }
+        }
+        ends = nextEnds;
+    }
+
+    return ends.size > 0;
 }
