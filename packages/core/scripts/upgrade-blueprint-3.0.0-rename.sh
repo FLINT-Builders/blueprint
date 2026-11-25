@@ -88,19 +88,52 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RESET='\033[0m'
 
+function expandBraces() {
+    # Expand {a,b} groups in a glob the way the shell would, without eval.
+    # Prints each resulting glob terminated by a NUL byte.
+    local pattern=$1
+    local re='^(.*)\{([^{}]*,[^{}]*)\}(.*)$'
+    if [[ $pattern =~ $re ]]; then
+        local prefix=${BASH_REMATCH[1]}
+        local rest=${BASH_REMATCH[2]},
+        local suffix=${BASH_REMATCH[3]}
+        local alternative
+        while [[ -n $rest ]]; do
+            alternative=${rest%%,*}
+            rest=${rest#*,}
+            expandBraces "$prefix$alternative$suffix"
+        done
+    else
+        printf '%s\0' "$pattern"
+    fi
+}
+
 function matchingFiles() {
     # Find all files containing regexp. Use grep's glob syntax for
-    # include/exclude paths. Use perl's regexp syntax.
-    cmd="grep \
-        --recursive \
-        --files-with-matches \
-        --include=$INCLUDE_GLOB \
-        --exclude-dir=$EXCLUDE_GLOB \
-        . \
-        ${SEARCH_PATH} \
-        | xargs perl -lne 'if (/$1/) { print \$ARGV; close ARGV }'
-    "
-    echo "$(eval $cmd)"
+    # include/exclude paths. Use perl's regexp syntax. Prints each file name
+    # terminated by a NUL byte. File names are untrusted, so they must only
+    # ever be passed around NUL-delimited and opened with three-argument open.
+    local glob
+    local grepArgs=(--recursive --files-with-matches --null)
+    while IFS= read -r -d '' glob; do
+        grepArgs+=("--include=$glob")
+    done < <(expandBraces "$INCLUDE_GLOB")
+    while IFS= read -r -d '' glob; do
+        grepArgs+=("--exclude-dir=$glob")
+    done < <(expandBraces "$EXCLUDE_GLOB")
+
+    grep "${grepArgs[@]}" -e . -- "$SEARCH_PATH" \
+        | xargs -0 perl -e '
+            my $re = shift;
+            for my $file (@ARGV) {
+                open(my $fh, "<", $file) or do { warn "Can not open $file: $!\n"; next };
+                while (my $line = <$fh>) {
+                    chomp $line;
+                    if ($line =~ /$re/) { print $file, "\0"; last }
+                }
+                close $fh;
+            }
+        ' "$1"
 }
 
 function rename() {
@@ -108,20 +141,24 @@ function rename() {
     fromString=$1
     toString=$2
     findRegexp=${3:-$fromString}
-    files=$(matchingFiles "$findRegexp")
+    local files=()
+    local file
+    while IFS= read -r -d '' file; do
+        files+=("$file")
+    done < <(matchingFiles "$findRegexp")
 
-    if [[ -z ${files// } ]]; then
+    if [[ ${#files[@]} -eq 0 ]]; then
         echo -e "No files contain ${BLUE}${fromString}${RESET}"
     else
-        count=$(echo "$files" | wc -l | awk '{print $1}')
+        count=${#files[@]}
         echo -e "Renaming ${BLUE}${fromString}${RESET} -> ${GREEN}${toString}${RESET} in ${BLUE}${count}${RESET} files"
 
         # Iterate and search&replace
-        echo "$files" | while read -r file ; do
-            echo -n "$file ... "
+        for file in "${files[@]}"; do
+            printf '%s ... ' "$file"
 
             # Search&replace in place with perl
-            perl -p -i -e "s/$findRegexp/$toString/g" "$file"
+            perl -p -i -e "s/$findRegexp/$toString/g" -- "$file"
             echo -e "${GREEN}done${RESET}"
         done
     fi
@@ -132,17 +169,21 @@ function warn() {
     fromString=$1
     toString=$2
     findRegexp=${3:-$fromString}
-    files=$(matchingFiles "$findRegexp")
+    local files=()
+    local file
+    while IFS= read -r -d '' file; do
+        files+=("$file")
+    done < <(matchingFiles "$findRegexp")
 
-    if [[ -z ${files// } ]]; then
+    if [[ ${#files[@]} -eq 0 ]]; then
         echo -e "No files contain ${BLUE}${fromString}${RESET}"
     else
-        count=$(echo "$files" | wc -l | awk '{print $1}')
+        count=${#files[@]}
         echo ""
         echo -e "${RED}WARNING: Skipping ${BLUE}${fromString}${RESET} -> ${GREEN}${toString}${RESET}"
         echo -e "${RED}Can't safely change ${BLUE}${fromString}${RED}, you'll need to manually rename/remove this string.${RESET}"
         echo -e "${RED}It was found in these files ${BLUE}${count}${RED} files:${RESET}"
-        echo "$files"
+        printf '%s\n' "${files[@]}"
     fi
 }
 
