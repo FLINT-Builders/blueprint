@@ -136,11 +136,11 @@ export default {
             stats: "errors-only",
         },
         historyApiFallback: true,
-        https: false,
         host: "127.0.0.1",
         hot: true,
         open: false,
         port: DEV_PORT,
+        server: "http",
         static: {
             // N.B. it is important to exclude TS sources from this directory allow hot module replacement to work
             directory: resolve(cwd(), "src", "assets"),
