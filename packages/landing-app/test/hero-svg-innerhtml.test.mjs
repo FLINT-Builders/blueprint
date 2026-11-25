@@ -293,8 +293,17 @@ async function openPage(url) {
         }
         return await evaluateInPage(page.webSocketDebuggerUrl, url);
     } finally {
-        chrome.kill("SIGKILL");
-        await rm(profile, { recursive: true, force: true });
+        if (chrome.exitCode == null && chrome.signalCode == null) {
+            chrome.kill("SIGKILL");
+        }
+        await new Promise(resolve => {
+            if (chrome.exitCode != null || chrome.signalCode != null) {
+                resolve();
+                return;
+            }
+            chrome.once("exit", resolve);
+        });
+        await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
 }
 
