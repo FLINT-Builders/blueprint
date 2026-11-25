@@ -47,9 +47,14 @@ approval_rules:
 
   # Special cases (all authors)
 
+  # Policy-bot path patterns are unanchored regular expressions, so every
+  # pattern below must be anchored with ^ and $ and escape literal dots.
+
   - name: changelog only and contributor approval
     options:
       allow_contributor: true
+      invalidate_on_push: true
+      ignore_update_merges: false
       ignore_edited_comments: true
     requires:
       count: 1
@@ -57,7 +62,7 @@ approval_rules:
     if:
       only_changed_files:
         paths:
-          - "changelog/@unreleased/.*\\.yml"
+          - "^packages/[^/]+/changelog/@unreleased/[^/]+\\.yml$"
 
   - name: fixing excavator
     options:
@@ -78,8 +83,8 @@ approval_rules:
         users: ["svc-excavator-bot", "dependabot[bot]"]
       only_changed_files:
         paths:
-          - "changelog/@unreleased/.*\\.yml"
-          - "^\\.circleci/.*$"
+          - "^packages/[^/]+/changelog/@unreleased/[^/]+\\.yml$"
+          - "^\\.circleci/[^/]+\\.yml$"
       has_valid_signatures_by_keys:
         key_ids: ["C9AF124A484882E0", "4AEE18F83AFDEB23"]
 
@@ -91,7 +96,7 @@ approval_rules:
         users: ["svc-excavator-bot"]
       only_changed_files:
         paths:
-          - "^\\..*.yml$"
+          - "^\\.[^/]+\\.yml$"
           - "^\\.github/.*$"
       has_valid_signatures_by_keys:
         key_ids: ["C9AF124A484882E0"]
@@ -106,7 +111,7 @@ approval_rules:
           - "dependabot[bot]"
       only_changed_files:
         paths:
-          - "^.*package.json$"
-          - "^.*pnpm-lock.yaml$"
+          - "^(packages/[^/]+/)?package\\.json$"
+          - "^pnpm-lock\\.yaml$"
       has_valid_signatures_by_keys:
         key_ids: ["C9AF124A484882E0"]
