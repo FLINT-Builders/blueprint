@@ -39,6 +39,7 @@ import { ControlGroup } from "./controlGroup";
 import { InputGroup } from "./inputGroup";
 import type { InputSharedProps } from "./inputSharedProps";
 import {
+    areBoundsInverted,
     clampValue,
     getValueOrEmptyValue,
     isValidNumericKeyboardEvent,
@@ -427,11 +428,12 @@ export class NumericInput extends AbstractPureComponent<
     // ==============
 
     private renderButtons() {
-        const { intent, max, min, locale } = this.props;
+        const { intent, locale } = this.props;
+        const { max, min } = this.getEffectiveBounds();
         const value = parseStringToStringNumber(this.state.value, locale);
         const disabled = this.props.disabled || this.props.readOnly;
-        const isIncrementDisabled = max !== undefined && value !== "" && +value >= max;
-        const isDecrementDisabled = min !== undefined && value !== "" && +value <= min;
+        const isIncrementDisabled = max != null && value !== "" && +value >= max;
+        const isDecrementDisabled = min != null && value !== "" && +value <= min;
 
         return (
             <ButtonGroup className={Classes.FIXED} key="button-group" vertical={true}>
@@ -545,9 +547,10 @@ export class NumericInput extends AbstractPureComponent<
         // If either min or max prop is set, when reaching the limit
         // the button will be disabled and stopContinuousChange will be never fired,
         // hence the need to check on each iteration to properly clear the timeout
-        if (this.props.min !== undefined || this.props.max !== undefined) {
-            const min = this.props.min ?? -Infinity;
-            const max = this.props.max ?? Infinity;
+        const bounds = this.getEffectiveBounds();
+        if (bounds.min != null || bounds.max != null) {
+            const min = bounds.min ?? -Infinity;
+            const max = bounds.max ?? Infinity;
             const valueAsNumber = this.getCurrentValueAsNumber();
             if (valueAsNumber <= min || valueAsNumber >= max) {
                 this.stopContinuousChange();
@@ -696,6 +699,11 @@ export class NumericInput extends AbstractPureComponent<
             delta,
             this.props.locale,
         );
+    }
+
+    private getEffectiveBounds(): { max?: number; min?: number } {
+        const { max, min } = this.props;
+        return areBoundsInverted(min, max) ? {} : { max, min };
     }
 
     private updateDelta(direction: IncrementDirection, e: React.MouseEvent | React.KeyboardEvent) {
