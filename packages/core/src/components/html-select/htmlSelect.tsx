@@ -116,7 +116,18 @@ export const HTMLSelect: React.FC<HTMLSelectProps> = forwardRef((props, ref) => 
 
     const optionChildren = options.map(option => {
         const optionProps: OptionProps = typeof option === "object" ? option : { value: option };
-        return <option {...optionProps} key={optionProps.value} children={optionProps.label || optionProps.value} />;
+        const { className: optionClassName, disabled: optionDisabled, label, value: optionValue } = optionProps;
+        return (
+            <option
+                className={optionClassName}
+                disabled={optionDisabled}
+                key={optionValue}
+                label={label}
+                value={optionValue}
+            >
+                {label || optionValue}
+            </option>
+        );
     });
 
     return (

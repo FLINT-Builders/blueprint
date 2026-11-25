@@ -201,14 +201,20 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = forwardRef((pro
             ref={mergeRefs(ref, outerRef)}
         >
             {options.map((option, index) => {
-                const isSelected = selectedValue === option.value;
+                // Only documented option fields are read; anything else on the option object must not
+                // reach the DOM button (e.g. `type`, `form`, `formAction`).
+                const { className: optionClassName, disabled: optionDisabled, icon, label, value } = option;
+                const isSelected = selectedValue === value;
                 return (
                     <SegmentedControlOption
-                        {...option}
-                        disabled={option.disabled || disabled}
+                        className={optionClassName}
+                        disabled={optionDisabled || disabled}
+                        icon={icon}
                         intent={intent}
                         isSelected={isSelected}
-                        key={option.value}
+                        key={value}
+                        label={label}
+                        value={value}
                         // eslint-disable-next-line @typescript-eslint/no-deprecated
                         large={large}
                         onClick={handleOptionClick}
