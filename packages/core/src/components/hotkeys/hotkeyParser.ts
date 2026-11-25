@@ -88,6 +88,14 @@ export interface KeyCombo {
     modifiers: number;
 }
 
+/**
+ * Looks up `key` among the table's own entries only. Combo strings may come from user input, so names inherited from
+ * `Object.prototype` (e.g. `constructor`, `__proto__`) must not resolve to non-string values.
+ */
+export function getOwnTableValue<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
+    return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
 export function comboMatches(a: KeyCombo, b: KeyCombo) {
     return a.modifiers === b.modifiers && a.key === b.key;
 }
@@ -111,15 +119,15 @@ export const parseKeyCombo = (combo: string): KeyCombo => {
                 Valid key combos look like "cmd + plus", "shift+p", or "!"`);
         }
 
-        if (CONFIG_ALIASES[piece] !== undefined) {
-            piece = CONFIG_ALIASES[piece];
-        }
+        piece = getOwnTableValue(CONFIG_ALIASES, piece) ?? piece;
 
-        if (MODIFIER_BIT_MASKS[piece] !== undefined) {
-            modifiers += MODIFIER_BIT_MASKS[piece];
-        } else if (SHIFT_KEYS[piece] !== undefined) {
+        const modifierMask = getOwnTableValue(MODIFIER_BIT_MASKS, piece);
+        const unshiftedKey = getOwnTableValue(SHIFT_KEYS, piece);
+        if (modifierMask !== undefined) {
+            modifiers += modifierMask;
+        } else if (unshiftedKey !== undefined) {
             modifiers += MODIFIER_BIT_MASKS.shift;
-            key = SHIFT_KEYS[piece];
+            key = unshiftedKey;
         } else {
             key = piece.toLowerCase();
         }
@@ -151,6 +159,7 @@ export const getKeyComboString = (e: KeyboardEvent): string => {
     }
 
     const key = maybeGetKeyFromEventCode(e);
+    const unshiftedKey = e.key === undefined ? undefined : getOwnTableValue(SHIFT_KEYS, e.key);
     if (key !== undefined) {
         comboParts.push(key);
     } else {
@@ -158,8 +167,8 @@ export const getKeyComboString = (e: KeyboardEvent): string => {
             comboParts.push("space");
         } else if (MODIFIER_KEYS.has(e.key)) {
             // do nothing
-        } else if (e.shiftKey && SHIFT_KEYS[e.key] !== undefined) {
-            comboParts.push(SHIFT_KEYS[e.key]);
+        } else if (e.shiftKey && unshiftedKey !== undefined) {
+            comboParts.push(unshiftedKey);
         } else if (e.key !== undefined) {
             comboParts.push(e.key.toLowerCase());
         }
@@ -236,8 +245,9 @@ export const getKeyCombo = (e: KeyboardEvent): KeyCombo => {
     }
     if (e.shiftKey) {
         modifiers += MODIFIER_BIT_MASKS.shift;
-        if (SHIFT_KEYS[e.key] !== undefined) {
-            key = SHIFT_KEYS[e.key];
+        const unshiftedKey = e.key === undefined ? undefined : getOwnTableValue(SHIFT_KEYS, e.key);
+        if (unshiftedKey !== undefined) {
+            key = unshiftedKey;
         }
     }
 
@@ -267,7 +277,7 @@ function isAltModifiedCharacter(key: string): boolean {
 export const normalizeKeyCombo = (combo: string, platformOverride: string | undefined): string[] => {
     const keys = combo.replace(/\s/g, "").split("+");
     return keys.map(key => {
-        const keyName = CONFIG_ALIASES[key] != null ? CONFIG_ALIASES[key] : key;
+        const keyName = getOwnTableValue(CONFIG_ALIASES, key) ?? key;
         return keyName === "meta" ? (isMac(platformOverride) ? "cmd" : "ctrl") : keyName;
     });
 };
