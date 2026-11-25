@@ -220,7 +220,8 @@ export class Tabs extends AbstractPureComponent<TabsProps, TabsState> {
     }
 
     public componentDidUpdate(prevProps: TabsProps, prevState: TabsState) {
-        if (this.state.selectedTabId !== prevState.selectedTabId) {
+        // Object.is so that a NaN id does not compare unequal to itself and loop forever
+        if (!Object.is(this.state.selectedTabId, prevState.selectedTabId)) {
             this.moveSelectionIndicator();
         } else if (prevState.selectedTabId != null) {
             // comparing React nodes is difficult to do with simple logic, so
@@ -228,7 +229,7 @@ export class Tabs extends AbstractPureComponent<TabsProps, TabsState> {
             const didChildrenChange = !Utils.arraysEqual(
                 this.getTabChildrenProps(prevProps),
                 this.getTabChildrenProps(),
-                Utils.shallowCompareKeys,
+                (a, b) => a === b || Utils.shallowCompareKeys(a, b),
             );
             if (didChildrenChange) {
                 this.moveSelectionIndicator();
@@ -311,8 +312,12 @@ export class Tabs extends AbstractPureComponent<TabsProps, TabsState> {
             return;
         }
 
-        const tabIdSelector = `${TAB_SELECTOR}[data-tab-id="${this.state.selectedTabId}"]`;
-        const selectedTabElement = this.tablistElement.querySelector<HTMLElement>(tabIdSelector);
+        // compare attribute values directly rather than interpolating the id into a selector,
+        // since tab ids may contain characters that are not valid in a CSS selector
+        const selectedTabId = String(this.state.selectedTabId);
+        const selectedTabElement = this.getTabElements().find(
+            tabElement => tabElement.getAttribute("data-tab-id") === selectedTabId,
+        );
 
         let indicatorWrapperStyle: React.CSSProperties = { display: "none" };
         if (selectedTabElement != null) {
