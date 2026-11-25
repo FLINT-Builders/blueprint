@@ -121,7 +121,6 @@ export default {
     devtool: IS_PRODUCTION ? false : "eval-source-map",
 
     devServer: {
-        allowedHosts: "all",
         client: {
             overlay: {
                 warnings: true,
@@ -135,7 +134,9 @@ export default {
         },
         historyApiFallback: true,
         https: false,
-        host: "0.0.0.0",
+        // Listen on loopback only. Leave `allowedHosts` unset so webpack-dev-server keeps its default
+        // Host/Origin header check, which rejects DNS-rebinding requests for arbitrary hostnames.
+        host: "127.0.0.1",
         hot: true,
         open: false,
         port: DEV_PORT,
