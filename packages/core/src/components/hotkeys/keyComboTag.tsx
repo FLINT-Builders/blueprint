@@ -33,7 +33,7 @@ import {
 import { Classes, DISPLAYNAME_PREFIX, type Props } from "../../common";
 import { Icon } from "../icon/icon";
 
-import { isMac, normalizeKeyCombo } from "./hotkeyParser";
+import { getOwnTableValue, isMac, normalizeKeyCombo } from "./hotkeyParser";
 
 const KEY_ICONS: Record<string, { icon: React.JSX.Element; iconTitle: string; isMacOnly?: boolean }> = {
     alt: { icon: <KeyOptionIcon />, iconTitle: "Alt/Option key", isMacOnly: true },
@@ -81,7 +81,7 @@ export const KeyComboTagInternal: React.FC<KeyComboTagInternalProps> = memo(prop
 
     const getKeyIcon = useCallback(
         (key: string) => {
-            const icon = KEY_ICONS[key.toLowerCase()];
+            const icon = getOwnTableValue(KEY_ICONS, key.toLowerCase());
             if (icon?.isMacOnly && !isMac(platformOverride)) {
                 return undefined;
             }
@@ -92,7 +92,7 @@ export const KeyComboTagInternal: React.FC<KeyComboTagInternalProps> = memo(prop
 
     const renderKey = useCallback(
         (key: string, index: number) => {
-            const keyString = DISPLAY_ALIASES[key.toLowerCase()] ?? key;
+            const keyString = getOwnTableValue(DISPLAY_ALIASES, key.toLowerCase()) ?? key;
             const icon = getKeyIcon(key);
             const reactKey = `key-${index}`;
             return (
