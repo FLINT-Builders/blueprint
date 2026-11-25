@@ -16,6 +16,10 @@ import { Classes as DocsClasses } from "@blueprintjs/docs-theme";
  * @see https://github.com/chjj/marked
  */
 const renderer = new marked.Renderer();
+
+/** Fence info strings come from untrusted docs sources, so only plain language names may reach `data-lang`. */
+const SAFE_LANGUAGE_PATTERN = /^[A-Za-z0-9+#-]+$/;
+
 /**
  * @param {string} textContent
  * @param {string | undefined} infostring
@@ -31,6 +35,9 @@ renderer.code = (textContent, infostring, isEscaped) => {
     // e.g. "tsx copy" → language = "tsx", hasCopyTag = true
     const tokens = (infostring || "").split(/\s+/).filter(Boolean);
     let language = tokens[0] || "";
+    if (!SAFE_LANGUAGE_PATTERN.test(language)) {
+        language = "";
+    }
     const hasCopyTag = tokens.includes("copy");
 
     switch (language) {
@@ -42,7 +49,7 @@ renderer.code = (textContent, infostring, isEscaped) => {
             break;
     }
 
-    const pre = `<pre class="${Classes.CODE_BLOCK} ${DocsClasses.DOCS_CODE_BLOCK}" data-lang="${language}">${textContent}</pre>`;
+    const pre = `<pre class="${Classes.CODE_BLOCK} ${DocsClasses.DOCS_CODE_BLOCK}" data-lang="${escapeHTML(language)}">${textContent}</pre>`;
 
     // Wrap code blocks in a container so the docs app can mount a copy button.
     // Triggered by either an explicit `copy` tag in the info string, or code starting with "import ".
